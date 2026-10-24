@@ -1,0 +1,63 @@
+! R2
+enable
+configure terminal
+hostname R2
+no ip domain-lookup
+ip domain-name itla.local
+enable secret cisco123
+service password-encryption
+username admin privilege 15 secret cisco123
+banner motd # Acceso solo a personal autorizado #
+line con 0
+ logging synchronous
+ exec-timeout 0 0
+line vty 0 4
+ login local
+ transport input ssh
+ logging synchronous
+ exec-timeout 0 0
+exit
+crypto key generate rsa modulus 2048
+ip ssh version 2
+ip access-list extended FIN-IN
+ deny ip 172.20.9.0 0.0.0.127 172.20.9.128 0.0.0.127
+ deny ip 172.20.9.0 0.0.0.127 172.20.0.0 0.0.7.255
+ deny ip 172.20.9.0 0.0.0.127 172.20.8.0 0.0.0.255
+ permit ip any any
+exit
+interface ethernet 0/0
+ description Trunk hacia SWA13
+ no shutdown
+interface ethernet 0/0.110
+ description Gateway Finanzas
+ encapsulation dot1Q 110
+ ip address 172.20.9.1 255.255.255.128
+ ip access-group FIN-IN in
+interface ethernet 0/0.120
+ description Gateway Academicos
+ encapsulation dot1Q 120
+ ip address 172.20.9.129 255.255.255.128
+interface ethernet 0/1
+ description Gateway Datacenter
+ ip address 172.20.10.1 255.255.255.192
+ no shutdown
+interface serial 4/0
+ description Hacia R1-Core
+ ip address 172.20.10.162 255.255.255.252
+ no shutdown
+exit
+router ospf 1
+ router-id 2.2.2.2
+ network 172.20.10.160 0.0.0.3 area 1
+ network 172.20.9.0 0.0.0.127 area 1
+ network 172.20.9.128 0.0.0.127 area 1
+ network 172.20.10.0 0.0.0.63 area 1
+ area 1 stub
+ passive-interface default
+ no passive-interface serial 4/0
+exit
+access-list 10 permit 172.20.10.64 0.0.0.31
+line vty 0 4
+ access-class 10 in
+end
+write memory
